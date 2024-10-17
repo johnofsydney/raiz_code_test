@@ -11,10 +11,10 @@
 Wallet.destroy_all
 User.destroy_all
 
-tom = User.create(email: 'tom@money.com')
-dick = User.create(email: 'dick@money.com')
-sally = User.create(email: 'sally@money.com')
+tom = User.create(email: 'tom@money.com', password_digest: Digest::SHA256.hexdigest('foo'))
+dick = User.create(email: 'dick@money.com', password_digest: Digest::SHA256.hexdigest('bar'))
+sally = User.create(email: 'sally@money.com', password_digest: Digest::SHA256.hexdigest('baz'))
 
 User.all.each do |user|
-  Wallet.create(user:, balance: [101,1234, 9999].sample)
+  Wallet.create(owner: user, balance: [101,1234, 9999].sample)
 end
