@@ -3,9 +3,9 @@ class UsersController < ApplicationController
 
   # GET /users
   def index
-    # @users = User.all
+    @users = User.all
 
-    render json: {users: User.includes(:wallet).all.map{|user| [user.id, user.email, user.wallet.balance]} }
+    render json: @users
   end
 
   # GET /users/1
@@ -43,28 +43,32 @@ class UsersController < ApplicationController
 
     @user = User.find_by(email: params[:email])
     if @user && @user.authenticate(params[:password])
-      render json: { user_id: @user.id, token: }
+      render json: { token: }
     else
       render json: { error: 'unauthorized' }, status: :unauthorized
     end
   end
 
   def send_funds
-    # funds can be sent from one user to another (could be extended to stocks or teams, but for now just users)
-    # funds can only be sent from the logged in user to another user.
-    # The sender is identified by the token, AND IN THIS METHOD, we asume that the token securely identifiers the user
+    begin
+      user_id = Tokenizer.decrypt(params[:token])
+    rescue ActiveSupport::MessageEncryptor::InvalidMessage
+      return render json: { error: 'Unauthorized' }, status: :unauthorized
+    rescue ActiveSupport::MessageVerifier::InvalidSignature
+    end
 
-    user_id = Base64.urlsafe_decode64(params[:token])
-    sender = User.find_by(id: user_id.to_i)
+    begin
+      sender = User.find(user_id)
+    rescue ActiveRecord::RecordNotFound => e
+      return render json: { error: 'User not found. Check if Token Expired' }, status: :unauthorized
+    end
 
-    receiver = User.find_by(email: params[:receiver_email])
-    sender_wallet = Wallet.find_by(owner: sender)
-    receiver_wallet = Wallet.find_by(owner: receiver)
+    receiver = User.find_by!(email: params[:receiver_email])
     amount = params[:amount]
 
-    success = Transfer.new(sender_wallet, receiver_wallet, amount).call
+    success = Transfer.new(sender.wallet, receiver.wallet, amount).call
 
-    render json: { success:, balance: sender_wallet.balance }
+    render json: { success:, balance: sender.wallet.balance }
   end
 
   private
@@ -79,12 +83,6 @@ class UsersController < ApplicationController
     end
 
     def token
-      # this token, returned to the client to identify the user, is the user's id encoded in base64.
-      # in a real application, this would be a JWT token or similar
-      # this is a simple example to show how a token could be generated
-      # and used to identify the user in subsequent requests
-      # but, of course it is not secure. At the least the encoding should be signed to prvent one use spoofing as another user
-      # and the token should have an expiry time
-      Base64.urlsafe_encode64(@user.id.to_s)
+      Tokenizer.encrypt(@user.id)
     end
 end

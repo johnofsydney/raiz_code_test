@@ -1,42 +1,67 @@
 # README
 
-This README would normally document whatever steps are necessary to get the
-application up and running.
+## Raiz code test by John Coote
 
-Things you may want to cover:
-
-- Ruby version
-
-- System dependencies
-
-- Configuration
-
-- Database creation
-
-- Database initialization
-
-- How to run the test suite
-
-- Services (job queues, cache servers, search engines, etc.)
-
-- Deployment instructions
-
-- ...
+First clone the repo locally and then
 
 ```
+$ bundle install
+$ rails db:setup
+```
+
+This will create 3 users, each with a wallet and some funds. Checkout `db/seeds.rb` for details.
+
+In order to perform any actions, first sign in to get a token, as follows:
+
+```sh
 $ curl -X POST http://localhost:3000/users/sign_in \
 -H "Content-Type: application/json" \
 -H "Accept: application/json" \
 -d '{"email": "tom@money.com", "password": "foo"}'
 
-{"user_id":8,"token":"OA=="}
+{"token":"dZywFjmlBVGKZTlgcSDn129tXy5RAIyJYlgRne9ur95XMFZJckoOop/mQVVTCutjt90fBKYd--FqcCx7O/f2CcBbki--lIp/JK7Ll0J7p5Fx6pfHYw=="}
 ```
 
-```
-$ curl -X POST http://localhost:3000/users/8/send_funds \
+If the email and password are not a valid combination there should be a suitable error message:
+
+```sh
+$ curl -X POST http://localhost:3000/users/sign_in \
 -H "Content-Type: application/json" \
 -H "Accept: application/json" \
--d '{"token": "OA==", "receiver_email": "sally@money.com", "amount": 3}'
+-d '{"email": "tom@money.com", "password": "foot"}'
 
-{"success":true,"balance":9993}
+{"error":"unauthorized"}
+```
+
+Funds can be transferred to another user as follows;
+The receiver_email nust correspond to a valid user (with a wallet), and there must be sufficient funds in the senders wallet.
+The token identifies the current user.
+
+```sh
+$ curl -X POST http://localhost:3000/users/send_funds \
+-H "Content-Type: application/json" \
+-H "Accept: application/json" \
+-d '{"token": "6w==--3ezriAuCwUbkI1MY--AZcEkshZXZ7FXOZLbmgMmw==", "receiver_email": "sally@money.com", "amount": 45}'
+
+{"success":true,"balance":9918}
+```
+
+If the requested amount is too high, then the error message will reflect that.
+
+```sh
+$ curl -X POST http://localhost:3000/users/send_funds \
+-H "Content-Type: application/json" \
+-H "Accept: application/json" \
+-d '{"token": "6w==--3ezriAuCwUbkI1MY--AZcEkshZXZ7FXOZLbmgMmw==", "receiver_email": "sally@money.com", "amount": 45678}'
+
+{"success":false,"balance":9918}
+```
+
+The Stock Price getter is contained in the file `lib/stock_info.rb`
+Calling like this for the requested methods will call to the external API and save the stock and the stock price into the database
+
+```rb
+StockInfo.price('AKUMDRUG.NS')
+StockInfo.prices(['AKUMDRUG.NS', "HININDUS.NS", "ITC.NS"])
+StockInfo.price_all
 ```

@@ -5,8 +5,6 @@ Rails.application.routes.draw do
   resources :users do
     collection do
       post 'sign_in'
-    end
-    member do
       post 'send_funds'
     end
   end
